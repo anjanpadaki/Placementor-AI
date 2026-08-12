@@ -1,0 +1,75 @@
+from langchain_groq import ChatGroq
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import StrOutputParser
+from app.config import settings
+from app.rag.retriever import get_retriever
+
+def get_llm():
+    return ChatGroq(
+        api_key=settings.GROQ_API_KEY,
+        model=settings.GROQ_CHAT_MODEL,
+        temperature=0
+    )
+
+def format_docs(docs):
+    return "\n\n".join(f"Source: {doc.metadata.get('filename')} (Page {doc.metadata.get('page')})\nContent: {doc.page_content}" for doc in docs)
+
+def generate_answer(query: str):
+    retriever = get_retriever()
+    llm = get_llm()
+    
+    system_prompt = (
+        "You are a helpful and precise assistant. Use the following pieces of retrieved context to answer the user's question. "
+        "If the answer is not contained in the context, explicitly state that the information could not be found in the uploaded documents. "
+        "Do not invent or hallucinate information. "
+        "Answer concisely but provide enough detail to be useful.\n\n"
+        "Context:\n{context}"
+    )
+    
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", system_prompt),
+        ("human", "{question}")
+    ])
+    
+    # Retrieve documents first to return them as sources
+    docs = retriever.invoke(query)
+    
+    if not docs:
+        return {
+            "answer": "I could not find any information relevant to your question in the uploaded documents.",
+            "sources": []
+        }
+    
+    # Generate the answer using LangChain
+    chain = (
+        prompt
+        | llm
+        | StrOutputParser()
+    )
+    
+    answer = chain.invoke({
+        "context": format_docs(docs),
+        "question": query
+    })
+    
+    sources = []
+    for doc in docs:
+        sources.append({
+            "filename": doc.metadata.get("filename", "Unknown"),
+            "page": doc.metadata.get("page", 0),
+            "content": doc.page_content[:200] + "..." # return a snippet
+        })
+        
+    # Deduplicate sources based on filename and page
+    unique_sources = []
+    seen = set()
+    for s in sources:
+        identifier = f"{s['filename']}_{s['page']}"
+        if identifier not in seen:
+            seen.add(identifier)
+            unique_sources.append(s)
+            
+    return {
+        "answer": answer,
+        "sources": unique_sources
+    }
