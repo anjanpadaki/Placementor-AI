@@ -23,12 +23,23 @@ def format_docs(docs):
 def generate_answer(query: str):
     retriever = get_retriever()
     llm = get_llm()
-    
+
     system_prompt = (
         "You are a helpful and precise assistant. Use the following pieces of retrieved context to answer the user's question. "
         "If the answer is not contained in the context, explicitly state that the information could not be found in the uploaded documents. "
         "Do not invent or hallucinate information. "
         "Answer concisely but provide enough detail to be useful.\n\n"
+        "Formatting rules (your answer is rendered as GitHub-flavored Markdown):\n"
+        "- Start with a one or two sentence direct answer, with no heading above it.\n"
+        "- For longer answers, organise the rest under short `###` headings.\n"
+        "- Use bullet points for lists of facts, steps or features; keep each bullet to one or two lines.\n"
+        "- Use **bold** for key terms, names and numbers, sparingly.\n"
+        "- Use a table only to compare items across the same attributes; keep cells short "
+        "(a few words or one sentence), and never put lists or multiple paragraphs inside a cell.\n"
+        "- Never output HTML tags such as <br>; use separate bullets or rows instead.\n"
+        "- Write mathematical formulas in LaTeX: $...$ inline and $$...$$ on its own line for display equations.\n"
+        "- When the question is simple, answer in a short paragraph without headings.\n"
+        "- Optionally end with a brief **Summary** line for long answers.\n\n"
         "Context:\n{context}"
     )
     
@@ -39,7 +50,7 @@ def generate_answer(query: str):
     
     # Retrieve documents first to return them as sources
     docs = retriever.invoke(query)
-    
+
     if not docs:
         return {
             "answer": "I could not find any information relevant to your question in the uploaded documents.",
@@ -63,7 +74,7 @@ def generate_answer(query: str):
             "Cannot reach Groq to generate an answer. Check your internet, "
             "firewall, VPN, or proxy settings, then try again."
         ) from error
-    
+
     sources = []
     for doc in docs:
         sources.append({

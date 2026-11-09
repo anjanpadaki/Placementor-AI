@@ -18,7 +18,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="PDF RAG Assistant API", lifespan=lifespan)
+app = FastAPI(title="PlaceMentor AI API", lifespan=lifespan)
 
 # Configure CORS for frontend access
 app.add_middleware(
