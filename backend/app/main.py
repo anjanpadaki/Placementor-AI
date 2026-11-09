@@ -1,8 +1,24 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+import logging
+from contextlib import asynccontextmanager
+
 from app.api import upload, chat, documents
 
-app = FastAPI(title="PDF RAG Assistant API")
+logger = logging.getLogger(__name__)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Reload the document list from Chroma so uploads survive restarts."""
+    try:
+        upload.load_documents_from_store()
+        logger.info("Restored %d document(s) from Chroma", len(upload.documents_metadata))
+    except Exception:
+        logger.exception("Could not restore documents from Chroma")
+    yield
+
+
+app = FastAPI(title="PDF RAG Assistant API", lifespan=lifespan)
 
 # Configure CORS for frontend access
 app.add_middleware(

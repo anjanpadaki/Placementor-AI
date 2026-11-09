@@ -78,7 +78,7 @@ export default function App() {
     setIsChatLoading(true);
 
     try {
-      const res = await axios.post(`${API_URL}/chat`, { query });
+      const res = await axios.post(`${API_URL}/chat`, { query }, { timeout: 30000 });
       setMessages((prev) => [
         ...prev,
         {
@@ -93,7 +93,9 @@ export default function App() {
         ...prev,
         {
           role: "assistant",
-          content: "Sorry, I encountered an error while trying to answer your question. Please try again.",
+          content: `Sorry, I couldn't answer that question. ${
+            err.response?.data?.detail || "The request timed out. Please try again."
+          }`,
         },
       ]);
     } finally {

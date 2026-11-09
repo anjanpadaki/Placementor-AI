@@ -1,14 +1,20 @@
+from functools import lru_cache
+
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
+from groq import APIConnectionError
 from app.config import settings
 from app.rag.retriever import get_retriever
 
+@lru_cache(maxsize=1)
 def get_llm():
     return ChatGroq(
         api_key=settings.GROQ_API_KEY,
         model=settings.GROQ_CHAT_MODEL,
-        temperature=0
+        temperature=0,
+        timeout=15,
+        max_retries=0,
     )
 
 def format_docs(docs):
@@ -47,10 +53,16 @@ def generate_answer(query: str):
         | StrOutputParser()
     )
     
-    answer = chain.invoke({
-        "context": format_docs(docs),
-        "question": query
-    })
+    try:
+        answer = chain.invoke({
+            "context": format_docs(docs),
+            "question": query
+        })
+    except APIConnectionError as error:
+        raise RuntimeError(
+            "Cannot reach Groq to generate an answer. Check your internet, "
+            "firewall, VPN, or proxy settings, then try again."
+        ) from error
     
     sources = []
     for doc in docs:

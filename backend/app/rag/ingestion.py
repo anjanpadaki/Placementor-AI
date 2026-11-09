@@ -2,7 +2,7 @@ import os
 from langchain_community.document_loaders import PyMuPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-def process_pdf(file_path: str, document_id: str):
+def process_pdf(file_path: str, document_id: str, filename: str | None = None):
     """
     Load a PDF and split it into chunks, attaching document_id metadata.
     """
@@ -16,7 +16,8 @@ def process_pdf(file_path: str, document_id: str):
         raise ValueError("No extractable text found in the PDF.")
     
     # Update metadata to include filename and document_id
-    filename = os.path.basename(file_path)
+    # Use the original upload name (not the UUID-prefixed name on disk) for citations.
+    filename = filename or os.path.basename(file_path)
     for doc in documents:
         # PyMuPDFLoader provides 'page' (0-indexed) or 'page_number' depending on version.
         # We ensure 'page' and 'filename' exist for our citation logic.
